@@ -1,0 +1,161 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "extensions_CustomScriptExtension_commandToExecute": {
+      "type": "SecureString"
+    },
+    "extensions_DatadogAgent_api_key": {
+      "type": "SecureString"
+    },
+    "extensions_IaaSAntimalware_Paths": {
+      "type": "SecureString"
+    },
+    "extensions_IaaSAntimalware_Extensions": {
+      "type": "SecureString"
+    },
+    "extensions_IaaSAntimalware_Processes": {
+      "type": "SecureString"
+    },
+    "virtualMachines_vm01_name": {
+      "defaultValue": "vm01",
+      "type": "String"
+    },
+    "disks_vm01_disk1_053587c979194c28945600252dd08a03_externalid": {
+      "defaultValue": "/subscriptions/6690b014-bdbd-4496-98ee-f2f255699f70/resourceGroups/EMRAN-HOSSAIN/providers/Microsoft.Compute/disks/vm01_disk1_053587c979194c28945600252dd08a03",
+      "type": "String"
+    },
+    "networkInterfaces_vm01851_externalid": {
+      "defaultValue": "/subscriptions/6690b014-bdbd-4496-98ee-f2f255699f70/resourceGroups/emran-hossain/providers/Microsoft.Network/networkInterfaces/vm01851",
+      "type": "String"
+    }
+  },
+  "variables": {},
+  "resources": [
+    {
+      "type": "Microsoft.Compute/virtualMachines",
+      "apiVersion": "2019-07-01",
+      "name": "[parameters('virtualMachines_vm01_name')]",
+      "location": "centralus",
+      "properties": {
+        "hardwareProfile": {
+          "vmSize": "Standard_DS1_v2"
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "MicrosoftWindowsServer",
+            "offer": "WindowsServer",
+            "sku": "2019-Datacenter",
+            "version": "latest"
+          },
+          "osDisk": {
+            "osType": "Windows",
+            "name": "[concat(parameters('virtualMachines_vm01_name'), '_disk1_053587c979194c28945600252dd08a03')]",
+            "createOption": "FromImage",
+            "caching": "ReadWrite",
+            "managedDisk": {
+              "storageAccountType": "Premium_LRS",
+              "id": "[parameters('disks_vm01_disk1_053587c979194c28945600252dd08a03_externalid')]"
+            },
+            "diskSizeGB": 127
+          },
+          "dataDisks": []
+        },
+        "osProfile": {
+          "computerName": "[parameters('virtualMachines_vm01_name')]",
+          "adminUsername": "emranuser",
+          "windowsConfiguration": {
+            "provisionVMAgent": true,
+            "enableAutomaticUpdates": true
+          },
+          "secrets": [],
+          "allowExtensionOperations": true,
+          "requireGuestProvisionSignal": true
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[parameters('networkInterfaces_vm01851_externalid')]"
+            }
+          ]
+        },
+        "diagnosticsProfile": {
+          "bootDiagnostics": {
+            "enabled": true,
+            "storageUri": "https://emranhossaindiag.blob.core.windows.net/"
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines/extensions",
+      "apiVersion": "2019-07-01",
+      "name": "[concat(parameters('virtualMachines_vm01_name'), '/CustomScriptExtension')]",
+      "location": "centralus",
+      "dependsOn": [
+        "[resourceId('Microsoft.Compute/virtualMachines', parameters('virtualMachines_vm01_name'))]"
+      ],
+      "properties": {
+        "autoUpgradeMinorVersion": true,
+        "publisher": "Microsoft.Compute",
+        "type": "CustomScriptExtension",
+        "typeHandlerVersion": "1.9",
+        "settings": {
+          "fileUris": [
+            "https://iaasv2tempstorageam.blob.core.windows.net/vmextensionstemporary-10032000a414d867-20200320093638752/start-service.ps1?sv=2017-04-17&sr=c&sig=zCSOZerGLMzwN0keDghKfXYiNh2AzHcSldoEPtoTBQQ%3D&se=2020-03-21T09%3A36%3A38Z&sp=rw"
+          ],
+          "commandToExecute": "[parameters('extensions_CustomScriptExtension_commandToExecute')]"
+        },
+        "protectedSettings": {}
+      }
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines/extensions",
+      "apiVersion": "2019-07-01",
+      "name": "[concat(parameters('virtualMachines_vm01_name'), '/DatadogAgent')]",
+      "location": "centralus",
+      "dependsOn": [
+        "[resourceId('Microsoft.Compute/virtualMachines', parameters('virtualMachines_vm01_name'))]"
+      ],
+      "properties": {
+        "autoUpgradeMinorVersion": true,
+        "publisher": "Datadog.Agent",
+        "type": "DatadogWindowsAgent",
+        "typeHandlerVersion": "1.0",
+        "settings": {
+          "api_key": "[parameters('extensions_DatadogAgent_api_key')]"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines/extensions",
+      "apiVersion": "2019-07-01",
+      "name": "[concat(parameters('virtualMachines_vm01_name'), '/IaaSAntimalware')]",
+      "location": "centralus",
+      "dependsOn": [
+        "[resourceId('Microsoft.Compute/virtualMachines', parameters('virtualMachines_vm01_name'))]"
+      ],
+      "properties": {
+        "autoUpgradeMinorVersion": true,
+        "publisher": "Microsoft.Azure.Security",
+        "type": "IaaSAntimalware",
+        "typeHandlerVersion": "1.3",
+        "settings": {
+          "AntimalwareEnabled": true,
+          "RealtimeProtectionEnabled": "true",
+          "ScheduledScanSettings": {
+            "isEnabled": "false",
+            "day": "7",
+            "time": "120",
+            "scanType": "Quick"
+          },
+          "Exclusions": {
+            "Paths": "[parameters('extensions_IaaSAntimalware_Paths')]",
+            "Extensions": "[parameters('extensions_IaaSAntimalware_Extensions')]",
+            "Processes": "[parameters('extensions_IaaSAntimalware_Processes')]"
+          }
+        }
+      }
+    }
+  ]
+}
